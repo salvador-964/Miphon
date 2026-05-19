@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GestiStock" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>GestiStock</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="header-logo">▣</span>
+      <span class="header-title">GestiStock</span>
+    </div>
+    <nav class="header-nav">
+      <button class="nav-btn active" id="navInventario" onclick="showView('inventario')">Inventario</button>
+      <button class="nav-btn" id="navHistorico" onclick="showView('historico')">Histórico</button>
+    </nav>
+  </header>
+
+  <!-- VIEW: INVENTARIO -->
+  <main id="viewInventario" class="view active">
+    <div class="view-toolbar">
+      <h2 class="view-title">Inventario <span class="row-count" id="invCount">0 / 20</span></h2>
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost" onclick="importarCSV()">⬆ Importar</button>
+        <button class="btn btn-ghost" onclick="exportarCSV()">⬇ Exportar</button>
+        <button class="btn btn-ghost" onclick="imprimirInventario()">🖨 PDF</button>
+        <button class="btn btn-primary" onclick="abrirModalAnadir()" id="btnAnadir">＋ Añadir</button>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table" id="tablaInventario">
+        <thead>
+          <tr>
+            <th>Marca</th>
+            <th>Unidades</th>
+            <th class="col-actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="invBody">
+          <tr class="empty-row"><td colspan="3">No hay artículos. Añade uno para comenzar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- VIEW: HISTÓRICO -->
+  <main id="viewHistorico" class="view">
+    <div class="view-toolbar">
+      <h2 class="view-title">Histórico</h2>
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost" onclick="abrirModalBorrarRango()">🗑 Borrar rango</button>
+        <button class="btn btn-ghost" onclick="imprimirHistoricoCompleto()">🖨 PDF completo</button>
+        <button class="btn btn-ghost" onclick="abrirModalImprimirRango()">🖨 PDF por fechas</button>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table" id="tablaHistorico">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Marca</th>
+            <th>Und. Ant.</th>
+            <th>Und. Act.</th>
+            <th>Observaciones</th>
+          </tr>
+        </thead>
+        <tbody id="histBody">
+          <tr class="empty-row"><td colspan="6">No hay registros en el histórico.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- INPUT CSV oculto -->
+  <input type="file" id="inputCSV" accept=".csv" style="display:none" onchange="leerCSV(event)" />
+
+  <!-- ======= MODALES ======= -->
+
+  <!-- Modal: Añadir fila -->
+  <div class="modal-overlay" id="modalAnadir">
+    <div class="modal">
+      <div class="modal-header"><h3>Añadir artículo</h3><button class="modal-close" onclick="cerrarModal('modalAnadir')">✕</button></div>
+      <div class="modal-body">
+        <label>Marca <input type="text" id="inputMarca" placeholder="Nombre de marca" maxlength="60" /></label>
+        <label>Unidades <input type="number" id="inputUnidades" placeholder="0" min="0" /></label>
+        <label>Observaciones <textarea id="inputObsAnadir" placeholder="Opcional..." rows="2"></textarea></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalAnadir')">Cancelar</button>
+        <button class="btn btn-primary" onclick="confirmarAnadir()">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar unidades -->
+  <div class="modal-overlay" id="modalEditar">
+    <div class="modal">
+      <div class="modal-header"><h3>Modificar unidades</h3><button class="modal-close" onclick="cerrarModal('modalEditar')">✕</button></div>
+      <div class="modal-body">
+        <p class="modal-info">Marca: <strong id="editMarcaLabel"></strong></p>
+        <p class="modal-info">Unidades actuales: <strong id="editUnidadesActuales"></strong></p>
+        <label>Nuevas unidades <input type="number" id="editInputUnidades" placeholder="0" min="0" /></label>
+        <label>Observaciones <textarea id="editObs" placeholder="Motivo del cambio..." rows="2"></textarea></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalEditar')">Cancelar</button>
+        <button class="btn btn-primary" onclick="confirmarEditar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Eliminar fila -->
+  <div class="modal-overlay" id="modalEliminar">
+    <div class="modal modal-sm">
+      <div class="modal-header"><h3>Eliminar artículo</h3><button class="modal-close" onclick="cerrarModal('modalEliminar')">✕</button></div>
+      <div class="modal-body">
+        <p>¿Eliminar <strong id="elimMarcaLabel"></strong> del inventario?</p>
+        <label>Observaciones <textarea id="elimObs" placeholder="Motivo..." rows="2"></textarea></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmarEliminar()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Borrar rango histórico -->
+  <div class="modal-overlay" id="modalBorrarRango">
+    <div class="modal">
+      <div class="modal-header"><h3>Borrar rango del histórico</h3><button class="modal-close" onclick="cerrarModal('modalBorrarRango')">✕</button></div>
+      <div class="modal-body">
+        <label>Desde fecha <input type="date" id="rangoDesdeF" /></label>
+        <label>Desde hora <input type="time" id="rangoDesdeH" value="00:00" /></label>
+        <label>Hasta fecha <input type="date" id="rangoHastaF" /></label>
+        <label>Hasta hora <input type="time" id="rangoHastaH" value="23:59" /></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalBorrarRango')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmarBorrarRango()">Borrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Imprimir rango histórico -->
+  <div class="modal-overlay" id="modalImprimirRango">
+    <div class="modal">
+      <div class="modal-header"><h3>Imprimir histórico por fechas</h3><button class="modal-close" onclick="cerrarModal('modalImprimirRango')">✕</button></div>
+      <div class="modal-body">
+        <label>Desde fecha <input type="date" id="pDesdeF" /></label>
+        <label>Desde hora <input type="time" id="pDesdeH" value="00:00" /></label>
+        <label>Hasta fecha <input type="date" id="pHastaF" /></label>
+        <label>Hasta hora <input type="time" id="pHastaH" value="23:59" /></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalImprimirRango')">Cancelar</button>
+        <button class="btn btn-primary" onclick="confirmarImprimirRango()">Generar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
